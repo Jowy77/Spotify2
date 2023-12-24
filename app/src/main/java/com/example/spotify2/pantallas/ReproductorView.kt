@@ -34,16 +34,31 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.spotify2.viewModel.ExoPlayerViewModel
 
+fun Slider(tiempo: Int): String {
+
+    val segundos = tiempo / 1000
+    val minutos = segundos / 60
+    val tiempoRestante = segundos % 60
+
+    val formateo = String.format("%02d:%02d", minutos, tiempoRestante)
+
+    return formateo;
+}
+
 @SuppressLint("StateFlowValueCalledInComposition")
 @Composable
 fun ReproductorView(navController: NavController?) {
 
     val contexto = LocalContext.current
-
+    //----------------------------------------------------------------------------------------------------------
     val exoPlayerViewModel: ExoPlayerViewModel = viewModel()
     val progresoCancion by exoPlayerViewModel.progreso.collectAsState()
     val duracion by exoPlayerViewModel.duracion.collectAsState()
-
+    //----------------------------------------------------------------------------------------------------------
+    LaunchedEffect(Unit){
+        exoPlayerViewModel.ExoPlayer(contexto)
+        exoPlayerViewModel.play(contexto)
+    }
     //----------------------------------------------------------------------------------------------------------
     var iconRandom by remember { mutableStateOf(androidx.media3.ui.R.drawable.exo_styled_controls_shuffle_off) }
     var iconoRepetir by remember { mutableStateOf(androidx.media3.ui.R.drawable.exo_styled_controls_repeat_off) }
@@ -51,11 +66,6 @@ fun ReproductorView(navController: NavController?) {
     //----------------------------------------------------------------------------------------------------------
     var pausado by remember { mutableStateOf(false) }
 
-
-    LaunchedEffect(Unit){
-        exoPlayerViewModel.crearExoPlayer(contexto)
-        exoPlayerViewModel.empezarMusica(contexto)
-    }
 
     Column (
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -65,21 +75,21 @@ fun ReproductorView(navController: NavController?) {
             .weight(0.2f)
             .align(Alignment.CenterHorizontally)
             .padding(8.dp),
-            fontSize = 30.sp)
-        Image(painter = painterResource(id = exoPlayerViewModel.cancionActual.value.caratula), contentDescription = "",
+            fontSize = 25.sp)
+        Image(painter = painterResource(id = exoPlayerViewModel.cancionActual.value.cover), contentDescription = "",
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp)
-                .size(300.dp)
+                .size(250.dp)
                 .weight(1f))
         Text(text = exoPlayerViewModel.cancionActual.value.nombre, modifier = Modifier
             .align(Alignment.CenterHorizontally)
             .padding(8.dp)
             .weight(0.3f),
-            fontSize = 30.sp)
+            fontSize = 25.sp)
         Slider(value = progresoCancion.toFloat(),
-            onValueChange = {nuevaPosicion ->
-                exoPlayerViewModel.movimientoSlider(nuevaPosicion.toInt())},
+            onValueChange = {Posicion ->
+                exoPlayerViewModel.SliderMovement(Posicion.toInt())},
             steps = 200,
             valueRange = 0f..duracion.toFloat(),
             modifier = Modifier
@@ -91,8 +101,8 @@ fun ReproductorView(navController: NavController?) {
                 .fillMaxWidth()
                 .padding(15.dp, 0.dp, 15.dp, 15.dp)
                 .weight(0.1f)){
-            Text(text = progresoCancion(progresoCancion),fontSize = 20.sp)
-            Text(text = progresoCancion(duracion),fontSize = 20.sp)
+            Text(text = Slider(progresoCancion),fontSize = 20.sp)
+            Text(text = Slider(duracion),fontSize = 20.sp)
         }
         Row (horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
@@ -100,9 +110,10 @@ fun ReproductorView(navController: NavController?) {
                 .fillMaxWidth()
                 .padding(8.dp, 8.dp, 8.dp, 8.dp)
                 .weight(0.3f)) {
+            //ICONO RANDOM
             IconButton(
                 onClick = {
-                    exoPlayerViewModel.pulsadoBotonRandom()
+                    exoPlayerViewModel.chackRandomButton()
                     if (exoPlayerViewModel.cancionRandom.value) {
                         iconRandom = androidx.media3.ui.R.drawable.exo_styled_controls_shuffle_on
                     }
@@ -116,9 +127,11 @@ fun ReproductorView(navController: NavController?) {
             ) {
                 Icon(
                     painter = painterResource(id = iconRandom),
-                    contentDescription = null)
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.surface)
             }
-            IconButton(onClick = { exoPlayerViewModel.retrocederCancion(contexto) },
+            //ICONO RETROCEDER---------------------------------------------------------------------
+            IconButton(onClick = { exoPlayerViewModel.previousSong(contexto) },
                 modifier = Modifier
                     .size(50.dp)
                     .clip(CircleShape)
@@ -127,11 +140,12 @@ fun ReproductorView(navController: NavController?) {
                 Icon(
                     painter = painterResource(id = androidx.media3.ui.R.drawable.exo_styled_controls_previous),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onBackground
+                    tint = MaterialTheme.colorScheme.surface
                 )
             }
+            //ICONO PLAY/PAUSE---------------------------------------------------------------------
             IconButton(onClick = {
-                exoPlayerViewModel.pausarReanudarMusica()
+                exoPlayerViewModel.onMusic()
                 pausado = !pausado
                 if (pausado) {
                     iconoPlay = androidx.media3.ui.R.drawable.exo_styled_controls_play
@@ -147,11 +161,12 @@ fun ReproductorView(navController: NavController?) {
                 Icon(
                     painter = painterResource(iconoPlay),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onBackground,
+                    tint = MaterialTheme.colorScheme.surface,
                     modifier = Modifier.size(800.dp)
                 )
             }
-            IconButton(onClick = { exoPlayerViewModel.cambiarCancion(contexto) },
+            //ICONO AVANZAR---------------------------------------------------------------------
+            IconButton(onClick = { exoPlayerViewModel.changeSong(contexto) },
                 modifier = Modifier
                     .size(50.dp)
                     .clip(CircleShape)
@@ -160,11 +175,12 @@ fun ReproductorView(navController: NavController?) {
                 Icon(
                     painter = painterResource(id = androidx.media3.ui.R.drawable.exo_styled_controls_next),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onBackground
+                    tint = MaterialTheme.colorScheme.surface
                 )
             }
+            //ICONO BUCLE---------------------------------------------------------------------
             IconButton(onClick = {
-                exoPlayerViewModel.pulsadoBotonRepetir()
+                exoPlayerViewModel.checkLoopButton()
                 if (exoPlayerViewModel.repetirCancion.value) {
                     iconoRepetir = androidx.media3.ui.R.drawable.exo_styled_controls_repeat_one
                 }
@@ -179,22 +195,9 @@ fun ReproductorView(navController: NavController?) {
                 Icon(
                     painter = painterResource(id = iconoRepetir),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onBackground
+                    tint = MaterialTheme.colorScheme.surface
                 )
             }
         }
     }
-}
-
-
-
-fun progresoCancion(tiempo: Int): String {
-
-    val segundos = tiempo / 1000
-    val minutos = segundos / 60
-    val segundosRestantes = segundos % 60
-
-    val formateo = String.format("%02d:%02d", minutos, segundosRestantes)
-
-    return formateo;
 }

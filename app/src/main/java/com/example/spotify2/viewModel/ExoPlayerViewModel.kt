@@ -24,7 +24,13 @@ class ExoPlayerViewModel : ViewModel() {
     private val _exoPlayer: MutableStateFlow<ExoPlayer?> = MutableStateFlow(null)
     val exoPlayer = _exoPlayer.asStateFlow()
 
-    private val listaDeCanciones = listOf(
+    private val _duracion = MutableStateFlow(0)
+    val duracion = _duracion.asStateFlow()
+
+    private val _progreso = MutableStateFlow(0)
+    val progreso = _progreso.asStateFlow()
+
+    private val cancionesList = listOf(
         Cancion(
             "Time - PinkFloyd",
             "Dark Side Of The Moon",
@@ -54,25 +60,17 @@ class ExoPlayerViewModel : ViewModel() {
             R.raw.wholelottarosie)
     )
 
-    private val _cancionActual = MutableStateFlow(listaDeCanciones[0])
+    private val _cancionActual = MutableStateFlow(cancionesList[0])
     val cancionActual = _cancionActual.asStateFlow()
 
-    private val _duracion = MutableStateFlow(0)
-    val duracion = _duracion.asStateFlow()
-
-    private val _progreso = MutableStateFlow(0)
-    val progreso = _progreso.asStateFlow()
-
-
-
-    private var indiceCancionActual = 0
+    private var indiceActual = 0
 
     private val _repetirCancion = MutableStateFlow(false)
     val repetirCancion = _repetirCancion.asStateFlow()
     private val _cancionRandom = MutableStateFlow(false)
     val cancionRandom = _cancionRandom.asStateFlow()
 
-    fun crearExoPlayer(context: Context) {
+    fun ExoPlayer(context: Context) {
 
         _exoPlayer.value = ExoPlayer.Builder(context).build()
         _exoPlayer.value!!.prepare()
@@ -80,36 +78,41 @@ class ExoPlayerViewModel : ViewModel() {
 
     }
 
-    fun empezarMusica(context: Context) {
+    fun play(context: Context) {
+        val mediaItem = MediaItem.fromUri(obtenerRuta(context, _cancionActual.value.cancion))
+        setExoPlayer(mediaItem)
+    }
 
-        var mediaItem = MediaItem.fromUri(obtenerRuta(context, _cancionActual.value.cancion))
-        _exoPlayer.value!!.setMediaItem(mediaItem)
-        _exoPlayer.value!!.playWhenReady = true
-        _exoPlayer.value!!.addListener(object : Player.Listener {
+    private fun setExoPlayer(mediaItem: MediaItem) {
+        val exoPlayer = _exoPlayer.value ?: return
+
+        exoPlayer.setMediaItem(mediaItem)
+        exoPlayer.playWhenReady = true
+
+        exoPlayer.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_READY) {
-                    _duracion.value = _exoPlayer.value!!.duration.toInt()
+                reproduccionStatusOnChange(playbackState)
+            }
+        })
+    }
 
-                    viewModelScope.launch {
-                        while (isActive) {
-                            _progreso.value = _exoPlayer.value!!.currentPosition.toInt()
-                            delay(1000)
-                        }
+    private fun reproduccionStatusOnChange(playbackState: Int) {
+        when (playbackState) {
+            Player.STATE_READY -> {
+                _duracion.value = _exoPlayer.value?.duration?.toInt() ?: 0
+
+                viewModelScope.launch {
+                    while (isActive) {
+                        _progreso.value = _exoPlayer.value?.currentPosition?.toInt() ?: 0
+                        delay(1000)
                     }
-                } else if (playbackState == Player.STATE_BUFFERING) {
-                    // El Player está cargando el archivo, preparando la reproducción.
-                    // No está listo, pero está en ello.
-                } else if (playbackState == Player.STATE_ENDED) {
-                    // El Player ha terminado de reproducir el archivo.
-                    //CambiarCancion(context)
-
-                } else if (playbackState == Player.STATE_IDLE) {
-                    // El player se ha creado, pero no se ha lanzado la operación prepared.
                 }
-
+            }
+            // Agrega casos para otros estados si es necesario
+            else -> {
+                // Manejar otros estados si es necesario
             }
         }
-        )
     }
 
     override fun onCleared() {
@@ -117,7 +120,7 @@ class ExoPlayerViewModel : ViewModel() {
         super.onCleared()
     }
 
-    fun pausarReanudarMusica() {
+    fun onMusic() {
         if (_exoPlayer.value!!.isPlaying) {
             _exoPlayer.value!!.pause()
         } else {
@@ -125,61 +128,81 @@ class ExoPlayerViewModel : ViewModel() {
         }
     }
 
-    fun cambiarCancion(context: Context) {
-        _exoPlayer.value?.stop()
-        _exoPlayer.value?.clearMediaItems()
+    fun changeSong(context: Context) {
+        stopCleanExoPlayer()
 
         if (repetirCancion.value) {
-            _exoPlayer.value?.setMediaItem(MediaItem.fromUri(obtenerRuta(context, _cancionActual.value.cancion)))
-            _exoPlayer.value?.prepare()
-            _exoPlayer.value?.playWhenReady = true
+            playCurrentSong(context)
         } else {
-            if (_cancionRandom.value) {
-                var cancionAleatoria: Int
-
-                do {
-                    cancionAleatoria = (listaDeCanciones.indices).random() + indiceCancionActual
-                } while (cancionAleatoria >= listaDeCanciones.size || cancionAleatoria == indiceCancionActual)
-                indiceCancionActual = cancionAleatoria
-            } else {
-                indiceCancionActual++
-            }
-            if (!repetirCancion.value && indiceCancionActual == listaDeCanciones.size) {
-                indiceCancionActual = 0
-            }
-            _cancionActual.value = listaDeCanciones[indiceCancionActual]
-
-            _exoPlayer.value?.setMediaItem(MediaItem.fromUri(obtenerRuta(context, _cancionActual.value.cancion)))
-            _exoPlayer.value?.prepare()
-            _exoPlayer.value?.playWhenReady = true
+            nextSong(context)
         }
     }
-    fun movimientoSlider(siguienteSector: Int) {
-        _exoPlayer.value?.seekTo(siguienteSector.toLong())
+
+    private fun stopCleanExoPlayer() {
+        _exoPlayer.value?.stop()
+        _exoPlayer.value?.clearMediaItems()
     }
 
-    fun pulsadoBotonRepetir() {
+    private fun playCurrentSong(context: Context) {
+        _exoPlayer.value?.setMediaItem(MediaItem.fromUri(obtenerRuta(context, _cancionActual.value.cancion)))
+        _exoPlayer.value?.prepare()
+        _exoPlayer.value?.playWhenReady = true
+    }
+
+    private fun nextSong(context: Context) {
+        if (_cancionRandom.value) {
+            randomSong(context)
+        } else {
+            nextSongList(context)
+        }
+    }
+
+    private fun randomSong(context: Context) {
+        var cancionAleatoria: Int
+
+        do {
+            cancionAleatoria = (cancionesList.indices).random()
+        } while (cancionAleatoria == indiceActual)
+
+        indiceActual = cancionAleatoria
+        actualizarCancionYReproducir(context)
+    }
+
+    private fun nextSongList(context: Context) {
+        indiceActual = if (indiceActual < cancionesList.size - 1) {
+            indiceActual + 1
+        } else {
+            0
+        }
+        actualizarCancionYReproducir(context)
+    }
+
+    private fun actualizarCancionYReproducir(context: Context) {
+        _cancionActual.value = cancionesList[indiceActual]
+        playCurrentSong(context)
+    }
+
+    fun SliderMovement(posisionSlider: Int) {
+        _exoPlayer.value?.seekTo(posisionSlider.toLong())
+    }
+
+    fun checkLoopButton() {
         _repetirCancion.value = !_repetirCancion.value
     }
 
-    fun pulsadoBotonRandom() {
+    fun chackRandomButton() {
         _cancionRandom.value = !_cancionRandom.value
     }
 
-    fun retrocederCancion(context: Context) {
-        _exoPlayer.value!!.stop()
-        _exoPlayer.value!!.clearMediaItems()
+    fun previousSong(context: Context) {
+        stopCleanExoPlayer()
 
-        indiceCancionActual = if (indiceCancionActual > 0) {
-            indiceCancionActual - 1
+        indiceActual = if (indiceActual > 0) {
+            indiceActual - 1
         } else {
-            listaDeCanciones.size - 1
+            cancionesList.size - 1
         }
-        _cancionActual.value = listaDeCanciones[indiceCancionActual]
-
-        _exoPlayer.value!!.setMediaItem(MediaItem.fromUri(obtenerRuta(context, _cancionActual.value.cancion)))
-        _exoPlayer.value!!.prepare()
-        _exoPlayer.value!!.playWhenReady = true
+        actualizarCancionYReproducir(context)
     }
 
     @Throws(Resources.NotFoundException::class)
