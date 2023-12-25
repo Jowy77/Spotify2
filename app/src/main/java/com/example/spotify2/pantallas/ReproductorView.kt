@@ -34,15 +34,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.spotify2.viewModel.ExoPlayerViewModel
 
-fun Slider(tiempo: Int): String {
+fun CrearValorSlider(tiempo: Int): String {
 
     val segundos = tiempo / 1000
     val minutos = segundos / 60
     val tiempoRestante = segundos % 60
+    val formateoTiempoCancion = String.format("%02d:%02d", minutos, tiempoRestante)
 
-    val formateo = String.format("%02d:%02d", minutos, tiempoRestante)
-
-    return formateo;
+    return formateoTiempoCancion;
 }
 
 @SuppressLint("StateFlowValueCalledInComposition")
@@ -52,7 +51,7 @@ fun ReproductorView(navController: NavController?) {
     val contexto = LocalContext.current
     //----------------------------------------------------------------------------------------------------------
     val exoPlayerViewModel: ExoPlayerViewModel = viewModel()
-    val progresoCancion by exoPlayerViewModel.progreso.collectAsState()
+    val progreso by exoPlayerViewModel.progreso.collectAsState()
     val duracion by exoPlayerViewModel.duracion.collectAsState()
     //----------------------------------------------------------------------------------------------------------
     LaunchedEffect(Unit){
@@ -71,46 +70,31 @@ fun ReproductorView(navController: NavController?) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceAround,
         modifier = Modifier.background(color = Color.Magenta)){
+        //-------------------------------------------TITULO ALBUM----------------------------------------------------------
         Text(text = exoPlayerViewModel.cancionActual.value.album, modifier = Modifier
-            .weight(0.2f)
-            .align(Alignment.CenterHorizontally)
-            .padding(8.dp),
-            fontSize = 25.sp)
+            .weight(0.2f).align(Alignment.CenterHorizontally).padding(8.dp), fontSize = 25.sp)
+        //-------------------------------------------ALBUM PORTADA---------------------------------------------------------
         Image(painter = painterResource(id = exoPlayerViewModel.cancionActual.value.cover), contentDescription = "",
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
-                .size(250.dp)
-                .weight(1f))
+            modifier = Modifier.fillMaxWidth().padding(8.dp).size(250.dp).weight(1f))
+        //-------------------------------------------TUTULO CANCION--------------------------------------------------------
         Text(text = exoPlayerViewModel.cancionActual.value.nombre, modifier = Modifier
-            .align(Alignment.CenterHorizontally)
-            .padding(8.dp)
-            .weight(0.3f),
-            fontSize = 25.sp)
-        Slider(value = progresoCancion.toFloat(),
-            onValueChange = {Posicion ->
-                exoPlayerViewModel.SliderMovement(Posicion.toInt())},
-            steps = 200,
-            valueRange = 0f..duracion.toFloat(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp)
-                .weight(0.1f))
+            .align(Alignment.CenterHorizontally).padding(8.dp).weight(0.3f), fontSize = 25.sp)
+        //-------------------------------------------SLIDER PROGRESO CANCION--------------------------------------------------------
+        Slider(value = progreso.toFloat(),
+            onValueChange = {Posicion -> exoPlayerViewModel.SliderMovement(Posicion.toInt())},
+            steps = 200, valueRange = 0f..duracion.toFloat(),
+            modifier = Modifier.fillMaxWidth().padding(10.dp).weight(0.1f))
+        //-------------------------------------------VALORES SLIDER-------------------------------------------------------
         Row (horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(15.dp, 0.dp, 15.dp, 15.dp)
-                .weight(0.1f)){
-            Text(text = Slider(progresoCancion),fontSize = 20.sp)
-            Text(text = Slider(duracion),fontSize = 20.sp)
+            modifier = Modifier.fillMaxWidth().padding(15.dp, 0.dp, 15.dp, 15.dp).weight(0.1f)){
+            Text(text = CrearValorSlider(progreso),fontSize = 20.sp)
+            Text(text = CrearValorSlider(duracion),fontSize = 20.sp)
         }
+        //-------------------------------------------BOTONES-------------------------------------------------------
         Row (horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp, 8.dp, 8.dp, 8.dp)
-                .weight(0.3f)) {
-            //ICONO RANDOM
+            modifier = Modifier.fillMaxWidth().padding(8.dp, 8.dp, 8.dp, 8.dp).weight(0.3f)) {
+            //ICONO RANDOM---------------------------------------------------------------------
             IconButton(
                 onClick = {
                     exoPlayerViewModel.chackRandomButton()
@@ -120,10 +104,7 @@ fun ReproductorView(navController: NavController?) {
                     else {
                         iconRandom = androidx.media3.ui.R.drawable.exo_styled_controls_shuffle_off
                     }},
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0f))
+                modifier = Modifier.size(50.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0f))
             ) {
                 Icon(
                     painter = painterResource(id = iconRandom),
@@ -132,10 +113,7 @@ fun ReproductorView(navController: NavController?) {
             }
             //ICONO RETROCEDER---------------------------------------------------------------------
             IconButton(onClick = { exoPlayerViewModel.previousSong(contexto) },
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0f))) {
+                modifier = Modifier.size(50.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0f))) {
 
                 Icon(
                     painter = painterResource(id = androidx.media3.ui.R.drawable.exo_styled_controls_previous),
@@ -153,10 +131,7 @@ fun ReproductorView(navController: NavController?) {
                 else {
                     iconoPlay = androidx.media3.ui.R.drawable.exo_styled_controls_pause
                 } },
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0f))) {
+                modifier = Modifier.size(80.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0f))) {
 
                 Icon(
                     painter = painterResource(iconoPlay),
@@ -167,10 +142,7 @@ fun ReproductorView(navController: NavController?) {
             }
             //ICONO AVANZAR---------------------------------------------------------------------
             IconButton(onClick = { exoPlayerViewModel.changeSong(contexto) },
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0f))) {
+                modifier = Modifier.size(50.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0f))) {
 
                 Icon(
                     painter = painterResource(id = androidx.media3.ui.R.drawable.exo_styled_controls_next),
@@ -187,10 +159,7 @@ fun ReproductorView(navController: NavController?) {
                 else {
                     iconoRepetir = androidx.media3.ui.R.drawable.exo_styled_controls_repeat_off
                 } },
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0f))) {
+                modifier = Modifier.size(50.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0f))) {
 
                 Icon(
                     painter = painterResource(id = iconoRepetir),
