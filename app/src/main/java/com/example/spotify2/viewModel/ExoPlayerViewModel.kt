@@ -80,10 +80,10 @@ class ExoPlayerViewModel : ViewModel() {
 
     fun play(context: Context) {
         val mediaItem = MediaItem.fromUri(obtenerRuta(context, _cancionActual.value.cancion))
-        setExoPlayer(mediaItem)
+        setExoPlayer(mediaItem, context)
     }
 
-    private fun setExoPlayer(mediaItem: MediaItem) {
+    private fun setExoPlayer(mediaItem: MediaItem, context: Context) {
         val exoPlayer = _exoPlayer.value ?: return
 
         exoPlayer.setMediaItem(mediaItem)
@@ -91,16 +91,15 @@ class ExoPlayerViewModel : ViewModel() {
 
         exoPlayer.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
-                reproduccionStatusOnChange(playbackState)
+                reproduccionStatusOnChange(playbackState,context)
             }
         })
     }
 
-    private fun reproduccionStatusOnChange(playbackState: Int) {
+    private fun reproduccionStatusOnChange(playbackState: Int, context: Context) {
         when (playbackState) {
             Player.STATE_READY -> {
                 _duracion.value = _exoPlayer.value?.duration?.toInt() ?: 0
-
                 viewModelScope.launch {
                     while (isActive) {
                         _progreso.value = _exoPlayer.value?.currentPosition?.toInt() ?: 0
@@ -108,9 +107,8 @@ class ExoPlayerViewModel : ViewModel() {
                     }
                 }
             }
-            // Agrega casos para otros estados si es necesario
-            else -> {
-                // Manejar otros estados si es necesario
+            Player.STATE_ENDED ->{
+                changeSong(context)
             }
         }
     }
